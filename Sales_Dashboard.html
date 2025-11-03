@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Locus - Sales Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+  <div class="container" style="max-width: 800px;">
+    <header class="page-header">
+      <div>
+        <h1 class="page-title">تسجيل عميل جديد</h1>
+        <p id="welcomeMessage" class="user-info"></p>
+      </div>
+      <button id="logoutButton" style="background-color: var(--danger-color);">خروج</button>
+    </header>
+
+    <div class="card">
+      <form id="newLeadForm">
+        <div class="form-grid">
+          <div class="form-group"><label for="customerName">اسم العميل</label><input id="customerName" type="text" required /></div>
+          <div class="form-group"><label for="customerMobile">رقم الهاتف</label><input id="customerMobile" type="tel" required /></div>
+          <div class="form-group"><label for="customerNationalId">رقم إثبات الشخصية</label><input id="customerNationalId" type="text" required /></div>
+          <div class="form-group"><label for="branch">الفرع</label><select id="branch" required></select></div>
+          <div class="form-group"><label for="service">الخدمة المطلوبة</label><select id="service" required></select></div>
+          <div class="form-group"><label for="leadSource">مصدر العميل</label><select id="leadSource" required></select></div>
+          
+          <!-- الحقول الجديدة -->
+          <div class="form-group"><label for="quality">جودة المكالمة</label><select id="quality" required></select></div>
+          <div class="form-group"><label for="deal">حالة الصفقة المبدئية</label><select id="deal" required></select></div>
+
+          <div class="form-group full-width"><label for="feedback">ملاحظات</label><textarea id="feedback" rows="3"></textarea></div>
+          <div class="form-group full-width"><button type="submit" id="submitButton">حفظ العميل</button></div>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const TOKEN = sessionStorage.getItem('finance_token');
+    if (!TOKEN) window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>";
+
+    document.addEventListener('DOMContentLoaded', () => {
+      google.script.run.withSuccessHandler(populateForm).withFailureHandler(handleError).getSalesInitialData(TOKEN);
+      document.getElementById('newLeadForm').addEventListener('submit', handleFormSubmit);
+      document.getElementById('logoutButton').addEventListener('click', () => { sessionStorage.removeItem('finance_token'); window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>"; });
+    });
+
+    function populateForm({ user, masterData }) {
+      document.getElementById('welcomeMessage').textContent = `أهلاً بك، ${user.name}`;
+      const populate = (id, opts) => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '<option value="" disabled selected>اختر...</option>' + opts.map(o => `<option value="${o}">${o}</option>`).join('');
+      };
+      populate('branch', masterData.branches);
+      populate('service', masterData.services);
+      populate('leadSource', masterData.leadSources);
+      populate('quality', masterData.qualities); // <-- تعبئة القائمة الجديدة
+      populate('deal', masterData.deals);         // <-- تعبئة القائمة الجديدة
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submitButton');
+      btn.disabled = true;
+      btn.textContent = 'جاري الحفظ...';
+
+      // تعديل: إضافة الحقول الجديدة
+      const leadData = {
+        customerName: document.getElementById('customerName').value,
+        customerMobile: document.getElementById('customerMobile').value,
+        customerNationalId: document.getElementById('customerNationalId').value,
+        branch: document.getElementById('branch').value,
+        service: document.getElementById('service').value,
+        leadSource: document.getElementById('leadSource').value,
+        quality: document.getElementById('quality').value, // <-- قراءة القيمة الجديدة
+        deal: document.getElementById('deal').value,       // <-- قراءة القيمة الجديدة
+        feedback: document.getElementById('feedback').value,
+      };
+
+      google.script.run
+        .withSuccessHandler(res => {
+          showToast(res.message, 'success');
+          document.getElementById('newLeadForm').reset();
+          btn.disabled = false;
+          btn.textContent = 'حفظ العميل';
+        })
+        .withFailureHandler(err => {
+          handleError(err);
+          btn.disabled = false;
+          btn.textContent = 'حفظ العميل';
+        })
+        .addNewLead(TOKEN, leadData);
+    }
+
+    function handleError(error) { showToast(error.message, 'error'); }
+    function showToast(message, type) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type}`;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    }
+  </script>
+</body>
+</html>

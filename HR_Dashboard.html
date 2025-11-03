@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Locus - HR Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg-main: #f8fafc; --bg-card: #ffffff; --border-color: #e2e8f0; --text-primary: #1e293b; --text-secondary: #64748b; --accent-blue: #38bdf8; --accent-blue-hover: #0ea5e9; --danger-color: #f43f5e; --success-color: #22c55e; } 
+    body { font-family: 'Cairo', sans-serif; background-color: var(--bg-main); color: var(--text-primary); margin: 0; } 
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; } 
+    .card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); } 
+    .grid { display: grid; gap: 20px; } 
+    .grid-cols-2 { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); } 
+    .grid-cols-3 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); } 
+    .form-group { margin-bottom: 16px; } 
+    label { display: block; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600; } 
+    input, select, textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-main); color: var(--text-primary); font-size: 1rem; box-sizing: border-box; } 
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.3); } 
+    button { padding: 10px 15px; border-radius: 8px; border: none; background-color: var(--accent-blue); color: #ffffff; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: background-color 0.2s; } 
+    button:hover { background-color: var(--accent-blue-hover); } 
+    button:disabled { background-color: #94a3b8; cursor: not-allowed; } 
+    .btn-submit { width: 100%; padding: 12px; font-size: 1rem; } 
+    .btn-delete { background-color: var(--danger-color); }
+    .btn-secondary { background-color: var(--text-secondary); }
+    .hidden { display: none !important; } 
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); } 
+    .page-title { font-size: 2rem; font-weight: 700; margin: 0; } 
+    .user-info { color: var(--text-secondary); font-size: 0.9rem; margin-top: 5px; } 
+    .spinner { border: 3px solid rgba(255, 255, 255, 0.5); border-radius: 50%; border-top: 3px solid #ffffff; width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; margin-right: 8px; vertical-align: middle; } 
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } 
+    .toast { position: fixed; top: 20px; right: 20px; background-color: var(--bg-card); color: var(--text-primary); padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 3000; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease-out; } 
+    .toast.show { opacity: 1; transform: translateY(0); } 
+    .toast.error { border-left: 4px solid #ef4444; } 
+    .toast.success { border-left: 4px solid #22c55e; } 
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; } 
+    th, td { text-align: right; padding: 12px; border-bottom: 1px solid var(--border-color); } 
+    th { background-color: var(--bg-main); font-weight: 600; color: var(--text-secondary); }
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2000; display: flex; justify-content: center; align-items: center; background-color: rgba(0,0,0,0.5); }
+    .modal { position: fixed; z-index: 2500; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; }
+    .modal-content { background-color: #fefefe; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px; }
+    .close { color: #aaa; float: left; font-size: 28px; font-weight: bold; }
+    .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
+    .form-input { width: 100%; padding: 8px; margin: 5px 0 15px 0; display: inline-block; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    .small-btn { padding: 5px 10px; font-size: 0.8rem; }
+    .small-btn.danger { background-color: var(--danger-color); }
+    .small-btn.success { background-color: var(--success-color); }
+    .styled-table { width: 100%; border-collapse: collapse; }
+  </style>
+</head>
+<body>
+  <div id="toastContainer" class="toast hidden"></div>
+
+  <div id="newEmployeeInfoModal" class="modal-overlay hidden">
+    <div class="card" style="width: 450px; text-align: center;">
+      <h3 style="color: var(--success-color);">تمت إضافة الموظف بنجاح!</h3>
+      <p>يرجى نسخ البيانات التالية وإرسالها للموظف الجديد لتسجيل الدخول.</p>
+      <div style="background-color: var(--bg-main); padding: 15px; border-radius: 8px; margin: 20px 0; text-align: right;">
+        <p><strong>كود الموظف:</strong> <span id="modal_emp_code"></span></p>
+        <p><strong>كلمة المرور الأولية:</strong> <span id="modal_emp_password"></span></p>
+      </div>
+      <div style="display: flex; gap: 15px; justify-content: center;">
+        <button id="copyNewEmpInfoBtn" style="background-color: var(--accent-blue);">نسخ البيانات</button>
+        <button id="closeNewEmpInfoModalBtn" class="btn-secondary">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <header class="page-header">
+      <div>
+        <h1 class="page-title">لوحة تحكم الموارد البشرية</h1>
+        <p id="welcomeMessage" class="user-info"></p>
+      </div>
+      <button id="logoutButton" style="background-color: var(--danger-color);">خروج</button>
+    </header>
+
+    <div id="hrSection" class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3>إدارة الموظفين</h3>
+        <div style="display: flex; gap: 10px;">
+            <button id="showAddEmployeeFormBtn" style="background-color: var(--success-color);">إضافة موظف جديد</button>
+            <button id="showDeductionFormBtn">تسجيل خصم</button>
+        </div>
+      </div>
+
+      <!-- Employee Add/Edit Form -->
+      <div id="employeeFormContainer" class="card hidden" style="margin-bottom: 20px; padding: 20px;">
+        <h4 id="employeeFormTitle">إضافة موظف جديد</h4>
+        <form id="employeeForm">
+          <input type="hidden" id="edit_emp_code_hidden">
+          <div class="grid grid-cols-2">
+            <div class="form-group">
+              <label for="emp_code">كود الموظف (يتم إنشاؤه تلقائياً)</label>
+              <input id="emp_code" type="text" readonly style="background-color: #e2e8f0; cursor: not-allowed;">
+            </div>
+            <div class="form-group">
+              <label for="emp_name">الاسم</label>
+              <input id="emp_name" type="text" required>
+            </div>
+          </div>
+          <div class="grid grid-cols-2">
+            <div class="form-group">
+              <label for="emp_branch">الفرع</label>
+              <select id="emp_branch" required></select>
+            </div>
+            <div class="form-group">
+              <label for="emp_role">الدور الوظيفي</label>
+              <select id="emp_role" required></select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2">
+            <div class="form-group">
+              <label for="emp_commission_pct">نسبة العمولة (%)</label>
+              <input id="emp_commission_pct" type="number" step="0.01" value="0">
+            </div>
+            <div class="form-group">
+              <label for="emp_phone">رقم الهاتف</label>
+              <input id="emp_phone" type="tel">
+            </div>
+          </div>
+          <div class="grid grid-cols-2">
+            <div class="form-group">
+              <label for="emp_national_id">الرقم القومي</label>
+              <input id="emp_national_id" type="text">
+            </div>
+            <div class="form-group">
+              <label for="emp_qualification">المؤهل</label>
+              <input id="emp_qualification" type="text">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="emp_is_active">الحالة</label>
+            <select id="emp_is_active">
+              <option value="Yes">فعال</option>
+              <option value="No" selected>غير فعال</option>
+            </select>
+          </div>
+          <button type="submit" class="btn-submit" id="saveEmployeeBtn">حفظ الموظف</button>
+        </form>
+
+        <div id="positions-management-section" style="margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; display: none;">
+          <h3>إدارة بنود الراتب</h3>
+          <div id="positions-table-container">
+            <p>جاري تحميل بنود الراتب...</p>
+          </div>
+          <button id="add-position-btn" onclick="openAddPositionModal()" style="margin-top: 15px;">إضافة بند راتب جديد</button>
+        </div>
+        
+        <div id="position-modal" class="modal" style="display:none;">
+          <div class="modal-content">
+            <span class="close" onclick="closePositionModal()">&times;</span>
+            <h4 id="modal-title">إضافة بند راتب جديد</h4>
+            <input type="hidden" id="position-id-input">
+            <input type="hidden" id="employee-code-input">
+            
+            <label for="position-title-input">وصف البند:</label>
+            <input type="text" id="position-title-input" class="form-input">
+            
+            <label for="salary-type-input">نوع البند:</label>
+            <select id="salary-type-input" class="form-input">
+              <option value="Basic">راتب أساسي (Basic)</option>
+              <option value="Allowance">بدل (Allowance)</option>
+              <option value="Fixed_Bonus">مكافأة ثابتة (Fixed_Bonus)</option>
+            </select>
+            
+            <label for="amount-input">المبلغ:</label>
+            <input type="number" id="amount-input" class="form-input">
+            
+            <label for="notes-input">ملاحظات:</label>
+            <textarea id="notes-input" class="form-input"></textarea>
+            
+            <button onclick="savePosition()">حفظ</button>
+          </div>
+        </div>
+
+        <button type="button" class="btn-secondary" style="margin-top: 20px;" onclick="hideAllForms()">إلغاء</button>
+      </div>
+
+      <!-- Deduction Form -->
+      <div id="deductionFormContainer" class="card hidden" style="margin-bottom: 20px; padding: 20px;">
+          <h4>إضافة خصم</h4>
+          <form id="deductionForm">
+              <div class="form-group"><label for="ded_emp_code">كود الموظف</label><select id="ded_emp_code" required></select></div>
+              <div class="form-group"><label for="ded_date">التاريخ</label><input id="ded_date" type="date" required></div>
+              <div class="form-group"><label for="ded_amount">المبلغ</label><input id="ded_amount" type="number" step="0.01" required min="0"></div>
+              <div class="form-group"><label for="ded_reason">السبب</label><input id="ded_reason" type="text" required></div>
+              <button type="submit" class="btn-submit">تسجيل الخصم</button>
+              <button type="button" class="btn-secondary" style="margin-top: 10px;" onclick="hideAllForms()">إلغاء</button>
+          </form>
+      </div>
+
+      <!-- Employees Table -->
+      <div style="overflow-x: auto;">
+        <table id="employeesTable" style="margin-top: 20px; min-width: 1000px;">
+          <thead>
+            <tr>
+              <th>الكود</th><th>الاسم</th><th>الفرع</th><th>الدور</th><th>الراتب</th><th>البدلات</th><th>العمولة (%)</th><th>الحالة</th><th>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    
+    <div id="allAttendanceLogSection" class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3>سجل الحضور لجميع الموظفين</h3>
+        <button id="toggleAllLogsBtn">عرض السجل</button>
+      </div>
+      <div id="allLogsContainer" class="hidden" style="overflow-x: auto;">
+        <table id="allLogsTable">
+          <thead>
+            <tr>
+              <th>التاريخ والوقت</th><th>كود الموظف</th><th>اسم الموظف</th><th>نوع العملية</th><th>حالة الموقع</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+  <script>
+    let TOKEN = null; let USER = null; let MASTER_DATA = null; let currentEmployees = [];
+    
+    function showToast(message, isError = false) { 
+      const toast = document.getElementById('toastContainer'); 
+      toast.textContent = message; 
+      toast.className = 'toast show ' + (isError ? 'error' : 'success'); 
+      setTimeout(() => { toast.className = 'toast hidden'; }, 4000); 
+    }
+    
+    function toggleSpinner(button, show, originalText) { 
+      button.disabled = show; 
+      button.innerHTML = show ? `<span class="spinner"></span> جار الحفظ...` : originalText; 
+    }
+
+    function initializeApp() { 
+      TOKEN = sessionStorage.getItem('finance_token'); 
+      if (!TOKEN) { 
+        window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>"; 
+        return; 
+      } 
+      google.script.run
+        .withSuccessHandler(({ user, masterData }) => { 
+          USER = user; 
+          MASTER_DATA = masterData; 
+          document.getElementById('welcomeMessage').textContent = `أهلاً بك، ${USER.name} (${USER.role})`; 
+          loadHrDashboard(); 
+        })
+        .withFailureHandler(err => { 
+          showToast(err.message, true); 
+          sessionStorage.removeItem('finance_token'); 
+          document.body.innerHTML = `<div class="card" style="margin: 50px auto; max-width: 400px; text-align: center;"><p>${err.message}</p><button onclick="window.top.location.href='<?= ScriptApp.getService().getUrl() ?>'">تسجيل الدخول</button></div>`; 
+        })
+        .getInitialData(TOKEN); 
+    }
+
+    function loadHrDashboard() { 
+      const branchSelect = document.getElementById('emp_branch'); 
+      branchSelect.innerHTML = MASTER_DATA.branches.map(b => `<option value="${b}">${b}</option>`).join(''); 
+      const roles = ['Branch Manager', 'Finance Manager', 'HR Manager', 'Employee', 'Admin', 'Sales', 'Sales Follow Up', 'Sales Manager', 'Operation Manager', 'Business Developer']; 
+      const roleSelect = document.getElementById('emp_role'); 
+      roleSelect.innerHTML = roles.map(r => `<option value="${r}">${r}</option>`).join(''); 
+      const dedEmpCodeSelect = document.getElementById('ded_emp_code'); 
+      dedEmpCodeSelect.innerHTML = '<option value="" disabled selected>-- اختر موظف --</option>'; 
+      
+      google.script.run
+        .withSuccessHandler(employees => { 
+          currentEmployees = employees; 
+          renderEmployeesTable(employees); 
+          const employeeOptions = employees.map(emp => `<option value="${emp.Code}">${emp.Name} (${emp.Code})</option>`).join(''); 
+          dedEmpCodeSelect.innerHTML += employeeOptions; 
+          document.getElementById('ded_date').value = new Date().toISOString().split('T')[0]; 
+        })
+        .withFailureHandler(err => showToast(err.message, true))
+        .getEmployeeListForHR(TOKEN); 
+    }
+
+    function renderEmployeesTable(employees) { 
+      const tbody = document.getElementById('employeesTable').querySelector('tbody'); 
+      tbody.innerHTML = ''; 
+      if (employees.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">لا يوجد موظفون لعرضهم.</td></tr>'; 
+        return; 
+      } 
+      employees.forEach(emp => { 
+        const isActive = String(emp.IsActive).toLowerCase() === 'yes'; 
+        const row = `
+          <tr id="emp-row-${emp.Code}">
+            <td>${emp.Code}</td>
+            <td>${emp.Name}</td>
+            <td>${emp.Branch}</td>
+            <td>${emp.Role}</td>
+            <td>${(Number(emp.Basic_Salary) || 0).toLocaleString('en-US')}</td>
+            <td>${(Number(emp.Allowance) || 0).toLocaleString('en-US')}</td>
+            <td>${(Number(emp.Commission_Pct) || 0).toFixed(2)}%</td>
+            <td><span style="color: ${isActive ? 'var(--success-color)' : 'var(--danger-color)'};">${isActive ? 'فعال' : 'غير فعال'}</span></td>
+            <td style="display: flex; gap: 5px;">
+              <button onclick="editEmployee('${emp.Code}')">تعديل</button>
+              <button class="btn-delete" onclick="deleteEmployee('${emp.Code}', '${emp.Name}')">حذف</button>
+            </td>
+          </tr>`; 
+        tbody.innerHTML += row; 
+      }); 
+    }
+
+    function showForm(formId) { hideAllForms(); document.getElementById(formId).classList.remove('hidden'); }
+    function hideAllForms() { document.getElementById('employeeFormContainer').classList.add('hidden'); document.getElementById('deductionFormContainer').classList.add('hidden'); }
+
+    function showEmployeeForm(isEdit = false, employee = null) { 
+      showForm('employeeFormContainer');
+      const form = document.getElementById('employeeForm'); form.reset();
+      const formTitle = document.getElementById('employeeFormTitle'); 
+      const empCodeInput = document.getElementById('emp_code'); 
+      const saveBtn = document.getElementById('saveEmployeeBtn'); 
+      const positionsSection = document.getElementById('positions-management-section');
+      
+      if (isEdit && employee) { 
+        formTitle.textContent = `تعديل بيانات الموظف: ${employee.Name}`; 
+        document.getElementById('edit_emp_code_hidden').value = employee.Code; 
+        empCodeInput.value = employee.Code; 
+        document.getElementById('emp_name').value = employee.Name; 
+        document.getElementById('emp_branch').value = employee.Branch; 
+        document.getElementById('emp_role').value = employee.Role; 
+        document.getElementById('emp_commission_pct').value = employee.Commission_Pct; 
+        document.getElementById('emp_phone').value = employee.Phone || '';
+        document.getElementById('emp_national_id').value = employee.National_ID || ''; 
+        document.getElementById('emp_qualification').value = employee.Qualification || ''; 
+        document.getElementById('emp_is_active').value = employee.IsActive; 
+        saveBtn.textContent = 'حفظ التعديلات'; 
+        positionsSection.style.display = 'block';
+        loadEmployeePositions(employee.Code);
+      } else { 
+        formTitle.textContent = 'إضافة موظف جديد'; 
+        empCodeInput.value = "(سيتم إنشاؤه تلقائياً)";
+        document.getElementById('edit_emp_code_hidden').value = ''; 
+        saveBtn.textContent = 'حفظ الموظف'; 
+        positionsSection.style.display = 'none';
+      } 
+    }
+
+    function editEmployee(employeeCode) { 
+      const employee = currentEmployees.find(emp => emp.Code === employeeCode); 
+      if (employee) { showEmployeeForm(true, employee); } 
+      else { showToast('لم يتم العثور على بيانات الموظف.', true); } 
+    }
+
+    function deleteEmployee(employeeCode, employeeName) {
+      if (confirm(`هل أنت متأكد أنك تريد حذف الموظف "${employeeName}" (الكود: ${employeeCode})؟`)) {
+        google.script.run
+          .withSuccessHandler(res => { showToast(res.message); loadHrDashboard(); })
+          .withFailureHandler(err => showToast(err.message, true))
+          .deleteEmployeeHR(TOKEN, employeeCode);
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => { 
+        initializeApp(); 
+        document.getElementById('logoutButton').addEventListener('click', () => { 
+          sessionStorage.removeItem('finance_token'); 
+          window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>"; 
+        }); 
+        
+        document.getElementById('showAddEmployeeFormBtn').addEventListener('click', () => showEmployeeForm(false)); 
+        document.getElementById('showDeductionFormBtn').addEventListener('click', () => showForm('deductionFormContainer'));
+        
+        document.getElementById('employeeForm').addEventListener('submit', (e) => { 
+          e.preventDefault(); 
+          const button = e.target.querySelector('button[type="submit"]'); 
+          const originalText = button.innerHTML; 
+          toggleSpinner(button, true, originalText); 
+          
+          const isEdit = document.getElementById('edit_emp_code_hidden').value !== ''; 
+          const employeeCodeForEdit = document.getElementById('edit_emp_code_hidden').value;
+
+          const employeeData = { 
+            Name: document.getElementById('emp_name').value, Branch: document.getElementById('emp_branch').value, 
+            Role: document.getElementById('emp_role').value, Commission_Pct: parseFloat(document.getElementById('emp_commission_pct').value), 
+            Phone: document.getElementById('emp_phone').value, National_ID: document.getElementById('emp_national_id').value, 
+            Qualification: document.getElementById('emp_qualification').value, IsActive: document.getElementById('emp_is_active').value, 
+          }; 
+          
+          const handler = (res, isAdd) => {
+              toggleSpinner(button, false, originalText); hideAllForms(); loadHrDashboard();
+              if (isAdd) {
+                  document.getElementById('modal_emp_code').textContent = res.newEmployee.code;
+                  document.getElementById('modal_emp_password').textContent = res.newEmployee.password;
+                  document.getElementById('newEmployeeInfoModal').classList.remove('hidden');
+              } else { showToast(res.message); }
+          };
+          const errorHandler = (err) => { showToast(err.message, true); toggleSpinner(button, false, originalText); };
+
+          if (isEdit) { google.script.run.withSuccessHandler(res => handler(res, false)).withFailureHandler(errorHandler).updateEmployeeHR(TOKEN, employeeCodeForEdit, employeeData); } 
+          else { employeeData.Basic_Salary = 0; google.script.run.withSuccessHandler(res => handler(res, true)).withFailureHandler(errorHandler).addEmployeeHR(TOKEN, employeeData); } 
+        }); 
+
+        document.getElementById('closeNewEmpInfoModalBtn').addEventListener('click', () => document.getElementById('newEmployeeInfoModal').classList.add('hidden'));
+        document.getElementById('copyNewEmpInfoBtn').addEventListener('click', () => {
+          const textToCopy = `كود الموظف: ${document.getElementById('modal_emp_code').textContent}\nكلمة المرور: ${document.getElementById('modal_emp_password').textContent}`;
+          navigator.clipboard.writeText(textToCopy).then(() => showToast('تم نسخ البيانات بنجاح!'), () => showToast('فشل النسخ.', true));
+        });
+
+        document.getElementById('deductionForm').addEventListener('submit', (e) => { 
+            e.preventDefault(); 
+            const button = e.target.querySelector('button[type="submit"]'); 
+            const originalText = button.innerHTML; 
+            toggleSpinner(button, true, originalText); 
+            const deductionData = { 
+                EmployeeCode: document.getElementById('ded_emp_code').value, Date: document.getElementById('ded_date').value, 
+                Amount: parseFloat(document.getElementById('ded_amount').value), Reason: document.getElementById('ded_reason').value, 
+            }; 
+            google.script.run
+                .withSuccessHandler(res => { showToast(res.message); e.target.reset(); document.getElementById('ded_date').value = new Date().toISOString().split('T')[0]; toggleSpinner(button, false, originalText); hideAllForms(); })
+                .withFailureHandler(err => { showToast(err.message, true); toggleSpinner(button, false, originalText); })
+                .addDeduction(TOKEN, deductionData); 
+        }); 
+        
+        document.getElementById('toggleAllLogsBtn')?.addEventListener('click', toggleAllAttendanceLogs);
+    });
+
+    function toggleAllAttendanceLogs() {
+      const container = document.getElementById('allLogsContainer');
+      const btn = document.getElementById('toggleAllLogsBtn');
+      if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden'); btn.textContent = 'إخفاء السجل'; btn.innerHTML = `<span class="spinner"></span> جار التحميل...`;
+        const today = new Date();
+        const startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+        const endDate = today.toISOString().split('T')[0];
+        google.script.run
+          .withSuccessHandler(logs => { renderAllLogsTable(logs); btn.textContent = 'إخفاء السجل'; })
+          .withFailureHandler(err => { showToast(err.message, true); btn.textContent = 'عرض السجل'; })
+          .getAllAttendanceLogs(TOKEN, startDate, endDate);
+      } else { container.classList.add('hidden'); btn.textContent = 'عرض السجل'; }
+    }
+
+    function renderAllLogsTable(logs) {
+      const tbody = document.getElementById('allLogsTable').querySelector('tbody');
+      tbody.innerHTML = '';
+      if (logs.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">لا يوجد سجلات حضور.</td></tr>'; return; }
+      logs.forEach(log => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${log.FormattedDateTime}</td><td>${log.EmployeeCode}</td><td>${log.EmployeeName}</td>
+            <td>${log.Type === 'Check-in' ? 'حضور' : 'انصراف'}</td><td>${log.Location_Status}</td>
+          </tr>`;
+      });
+    }
+
+    function loadEmployeePositions(employeeCode) {
+      document.getElementById('employee-code-input').value = employeeCode; 
+      const container = document.getElementById('positions-table-container');
+      container.innerHTML = '<p>جاري تحميل بنود الراتب...</p>';
+      google.script.run
+        .withSuccessHandler(positions => {
+          if (positions.length === 0) { container.innerHTML = '<p>لا توجد بنود راتب مسجلة.</p>'; return; }
+          let tableHTML = `<table class="styled-table"><thead><tr><th>الوصف</th><th>النوع</th><th>المبلغ</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>`;
+          positions.forEach(pos => {
+            const editParams = `'${pos.Position_ID}', '${pos.PositionTitle}', '${pos.SalaryType}', '${pos.Amount}', '${pos.Notes || ''}'`;
+            tableHTML += `<tr><td>${pos.PositionTitle}</td><td>${pos.SalaryType}</td><td>${pos.Amount}</td><td>${pos.IsActive === 'Yes' ? 'فعال' : 'موقوف'}</td>
+                            <td>
+                              <button class="small-btn" onclick="openEditPositionModal(${editParams})">تعديل</button>
+                              <button class="small-btn ${pos.IsActive === 'Yes' ? 'danger' : 'success'}" onclick="togglePositionStatus('${pos.Position_ID}', '${pos.IsActive}')">${pos.IsActive === 'Yes' ? 'إيقاف' : 'تفعيل'}</button>
+                            </td></tr>`;
+          });
+          container.innerHTML = tableHTML + `</tbody></table>`;
+        })
+        .withFailureHandler(err => showToast(err.message, true))
+        .getEmployeePositions(TOKEN, employeeCode);
+    }
+
+    function savePosition() {
+      const modal = document.getElementById('position-modal');
+      const saveButton = modal.querySelector('button');
+      const originalButtonText = saveButton.innerHTML;
+      toggleSpinner(saveButton, true, originalButtonText);
+
+      const positionId = document.getElementById('position-id-input').value;
+      const employeeCode = document.getElementById('employee-code-input').value;
+
+      const onComplete = () => toggleSpinner(saveButton, false, originalButtonText);
+      const successHandler = (response) => { onComplete(); onSaveSuccess(response); };
+      const errorHandler = (error) => { onComplete(); showToast(error.message, true); };
+
+      if (positionId) {
+        const updates = { PositionTitle: document.getElementById('position-title-input').value, SalaryType: document.getElementById('salary-type-input').value, Amount: document.getElementById('amount-input').value, Notes: document.getElementById('notes-input').value };
+        google.script.run.withSuccessHandler(successHandler).withFailureHandler(errorHandler).updateEmployeePosition(TOKEN, positionId, updates);
+      } else {
+        const newPositionData = { EmployeeCode: employeeCode, PositionTitle: document.getElementById('position-title-input').value, SalaryType: document.getElementById('salary-type-input').value, Amount: document.getElementById('amount-input').value, Notes: document.getElementById('notes-input').value };
+        google.script.run.withSuccessHandler(successHandler).withFailureHandler(errorHandler).addEmployeePosition(TOKEN, newPositionData);
+      }
+    }
+
+    function togglePositionStatus(positionId, currentStatus) {
+      const newStatus = currentStatus === 'Yes' ? 'No' : 'Yes';
+      if (confirm(`هل أنت متأكد من رغبتك في ${newStatus === 'No' ? 'إيقاف' : 'تفعيل'} هذا البند؟`)) {
+        google.script.run.withSuccessHandler(onSaveSuccess).withFailureHandler(err => showToast(err.message, true)).updateEmployeePosition(TOKEN, positionId, { IsActive: newStatus });
+      }
+    }
+
+    function onSaveSuccess(response) {
+      showToast(response.message);
+      closePositionModal();
+      const employeeCode = document.getElementById('employee-code-input').value;
+      if (employeeCode) { loadEmployeePositions(employeeCode); loadHrDashboard(); }
+    }
+
+    function openAddPositionModal() {
+      document.getElementById('position-id-input').value = ''; document.getElementById('position-title-input').value = '';
+      document.getElementById('salary-type-input').value = 'Basic'; document.getElementById('amount-input').value = '';
+      document.getElementById('notes-input').value = ''; document.getElementById('modal-title').innerText = 'إضافة بند راتب جديد';
+      document.getElementById('position-modal').style.display = 'flex';
+    }
+
+    function openEditPositionModal(positionId, title, type, amount, notes) {
+      document.getElementById('position-id-input').value = positionId; document.getElementById('position-title-input').value = title;
+      document.getElementById('salary-type-input').value = type; document.getElementById('amount-input').value = amount;
+      document.getElementById('notes-input').value = notes || ''; document.getElementById('modal-title').innerText = 'تعديل بند راتب';
+      document.getElementById('position-modal').style.display = 'flex';
+    }
+
+    function closePositionModal() { document.getElementById('position-modal').style.display = 'none'; }
+  </script>
+</body>
+</html>

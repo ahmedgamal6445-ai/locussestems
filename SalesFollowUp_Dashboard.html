@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Locus - Sales Follow-up</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+  <div class="container">
+    <header class="page-header">
+      <h1>عملاء للمتابعة</h1>
+      <button id="refreshButton">تحديث القائمة</button>
+    </header>
+    <div class="card">
+      <div style="overflow-x: auto;">
+        <table id="leadsTable">
+          <thead><tr><th>تاريخ التسجيل</th><th>اسم العميل</th><th>الهاتف</th><th>الفرع</th><th>الخدمة</th><th>ملاحظات المبيعات</th><th>إجراء</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="followUpModal" class="modal-overlay">
+    <div class="modal-content">
+      <span id="closeModal" class="close-btn">&times;</span>
+      <h2>تسجيل متابعة</h2>
+      <input type="hidden" id="modalLeadId">
+      <textarea id="modalFeedback" rows="4" style="width: 100%; margin-top: 15px;" placeholder="اكتب نتيجة المكالمة هنا..."></textarea>
+      <button id="saveFollowUp" style="margin-top: 10px; width: 100%;">حفظ المتابعة</button>
+    </div>
+  </div>
+
+  <script>
+    const TOKEN = sessionStorage.getItem('finance_token');
+    if (!TOKEN) window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>";
+
+    const modal = document.getElementById('followUpModal');
+    
+    document.addEventListener('DOMContentLoaded', loadLeads);
+    document.getElementById('refreshButton').addEventListener('click', loadLeads);
+    document.getElementById('closeModal').onclick = () => modal.style.display = "none";
+    document.getElementById('saveFollowUp').addEventListener('click', saveFollowUp);
+
+    function loadLeads() {
+      const tbody = document.querySelector('#leadsTable tbody');
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">جاري التحميل...</td></tr>';
+      google.script.run.withSuccessHandler(renderTable).withFailureHandler(err => alert(err.message)).getLeadsForFollowUp(TOKEN);
+    }
+
+    function renderTable(leads) {
+      const tbody = document.querySelector('#leadsTable tbody');
+      tbody.innerHTML = '';
+      if (leads.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">لا يوجد عملاء للمتابعة حالياً.</td></tr>';
+        return;
+      }
+      leads.forEach(lead => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+          <td>${new Date(lead.Timestamp).toLocaleDateString('ar-EG')}</td>
+          <td>${lead.Customer_Name}</td>
+          <td>${lead.Customer_Mobile}</td>
+          <td>${lead.Branch}</td>
+          <td>${lead.Service}</td>
+          <td>${lead.Sales_Feedback || ''}</td>
+          <td><button onclick="openModal('${lead.Lead_ID}')">متابعة</button></td>
+        `;
+      });
+    }
+
+    function openModal(leadId) {
+      document.getElementById('modalLeadId').value = leadId;
+      document.getElementById('modalFeedback').value = '';
+      modal.style.display = "flex";
+    }
+
+    function saveFollowUp() {
+      const leadId = document.getElementById('modalLeadId').value;
+      const feedback = document.getElementById('modalFeedback').value;
+      if (!feedback.trim()) { alert('يرجى كتابة ملاحظات المتابعة.'); return; }
+      
+      const btn = document.getElementById('saveFollowUp');
+      btn.disabled = true;
+      btn.textContent = 'جاري الحفظ...';
+
+      google.script.run
+        .withSuccessHandler(res => {
+          alert(res.message);
+          modal.style.display = "none";
+          loadLeads();
+          btn.disabled = false;
+          btn.textContent = 'حفظ المتابعة';
+        })
+        .withFailureHandler(err => {
+          alert(err.message);
+          btn.disabled = false;
+          btn.textContent = 'حفظ المتابعة';
+        })
+        .updateFollowUp(TOKEN, leadId, feedback);
+    }
+  </script>
+</body>
+</html>

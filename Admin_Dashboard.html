@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Locus - Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <style>
+    :root { --bg-main: #f8fafc; --bg-card: #ffffff; --border-color: #e2e8f0; --text-primary: #1e293b; --text-secondary: #64748b; --accent-blue: #38bdf8; --accent-blue-hover: #0ea5e9; --danger-color: #f43f5e; --success-color: #22c55e; }
+    body { font-family: 'Cairo', sans-serif; background-color: var(--bg-main); color: var(--text-primary); margin: 0; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); }
+    .grid { display: grid; gap: 20px; }
+    .grid-cols-2 { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+    .grid-cols-3 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600; }
+    input, select, textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-main); color: var(--text-primary); font-size: 1rem; box-sizing: border-box; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.3); }
+    button { padding: 10px 15px; border-radius: 8px; border: none; background-color: var(--accent-blue); color: #ffffff; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: background-color 0.2s; }
+    button:hover { background-color: var(--accent-blue-hover); }
+    button:disabled { background-color: #94a3b8; cursor: not-allowed; }
+    .btn-submit { width: 100%; padding: 12px; font-size: 1rem; }
+    .btn-approve { background-color: var(--success-color); }
+    .hidden { display: none !important; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+    .page-title { font-size: 2rem; font-weight: 700; margin: 0; }
+    .user-info { color: var(--text-secondary); font-size: 0.9rem; margin-top: 5px; }
+    .kpi-card { text-align: center; padding: 15px; }
+    .kpi-value { font-size: 2.5rem; font-weight: 700; color: var(--accent-blue); margin-top: 8px; }
+    .kpi-label { color: var(--text-secondary); font-size: 1rem; }
+    .spinner { border: 3px solid rgba(255, 255, 255, 0.5); border-radius: 50%; border-top: 3px solid #ffffff; width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; margin-right: 8px; vertical-align: middle; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .toast { position: fixed; top: 20px; right: 20px; background-color: var(--bg-card); color: var(--text-primary); padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 3000; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease-out; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.error { border-left: 4px solid #ef4444; }
+    .toast.success { border-left: 4px solid #22c55e; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { text-align: right; padding: 12px; border-bottom: 1px solid var(--border-color); }
+    th { background-color: var(--bg-main); font-weight: 600; color: var(--text-secondary); }
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+  </style>
+</head>
+<body>
+  <div id="toastContainer" class="toast hidden"></div>
+  <div class="container">
+    <header class="page-header">
+      <div>
+        <h1 class="page-title">لوحة التحكم الشاملة</h1>
+        <p id="welcomeMessage" class="user-info"></p>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button id="registerContractBtn" style="background-color: var(--success-color);">تسجيل عقد</button>
+        <button id="showChangePasswordModalBtn">تغيير كلمة المرور</button>
+        <button id="logoutButton" style="background-color: var(--danger-color);">خروج</button>
+      </div>
+    </header>
+    
+    <div id="changePasswordModal" class="modal-overlay hidden">
+      <div class="card" style="width: 400px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h4>تغيير كلمة المرور</h4>
+          <button id="closeModalBtn" style="background: none; color: var(--danger-color); font-size: 1.5rem; padding: 0; line-height: 1;">&times;</button>
+        </div>
+        <form id="changePasswordForm" style="margin-top: 20px;">
+          <div class="form-group"><label for="old_password">كلمة المرور الحالية</label><input id="old_password" type="password" required></div>
+          <div class="form-group"><label for="new_password">كلمة المرور الجديدة</label><input id="new_password" type="password" required></div>
+          <div class="form-group"><label for="confirm_new_password">تأكيد كلمة المرور الجديدة</label><input id="confirm_new_password" type="password" required></div>
+          <button type="submit" class="btn-submit">حفظ كلمة المرور الجديدة</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="kpiSection" class="card">
+      <div id="kpiFilters" style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+        <h4 style="margin: 0;">عرض بيانات:</h4>
+        <select id="kpiPeriodFilter" style="width: 150px;"><option value="current_month" selected>الشهر الحالي</option><option value="current_year">السنة الحالية</option><option value="last_year">السنة الماضية</option><option value="custom">فترة مخصصة</option></select>
+        <div id="kpiCustomDateRange" class="hidden" style="display: flex; gap: 10px; align-items: center;">
+          <label for="kpiStartDate" style="margin: 0;">من:</label><input type="date" id="kpiStartDate" style="width: 150px;">
+          <label for="kpiEndDate" style="margin: 0;">إلى:</label><input type="date" id="kpiEndDate" style="width: 150px;">
+        </div>
+        <button id="applyKpiFilterBtn" style="margin-right: auto;">تطبيق</button>
+      </div>
+      <div id="adminDashboard" class="grid" style="grid-template-columns: repeat(5, 1fr); gap: 15px;">
+        <div class="kpi-card"><div class="kpi-label">إجمالي الدخل</div><div id="kpi_rev" class="kpi-value">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">إجمالي التكاليف</div><div id="kpi_cost" class="kpi-value">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">صافي الربح</div><div id="kpi_net" class="kpi-value">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Gross ROI</div><div id="kpi_roi_gross" class="kpi-value">0.00</div></div>
+        <div class="kpi-card"><div class="kpi-label">Net ROI</div><div id="kpi_roi_net" class="kpi-value">0.00</div></div>
+      </div>
+    </div>
+
+    <div id="reportsSection" class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3>ملخص الدخل والتكاليف لكل فرع</h3>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <label for="reportItemFilter" style="margin:0;">فلترة حسب البند:</label><select id="reportItemFilter" style="width: 200px;"></select>
+        </div>
+      </div>
+      <table id="reportsTable"><thead><tr><th>الفرع</th><th>إجمالي الدخل</th><th>إجمالي التكاليف</th><th>الصافي</th></tr></thead><tbody></tbody><tfoot></tfoot></table>
+    </div>
+
+    <div id="chartsSection" class="card">
+      <h3 style="margin-bottom: 20px;">الرسوم البيانية</h3>
+      <div class="grid grid-cols-2">
+        <div><h4>الدخل والتكاليف عبر الزمن</h4><div id="timeSeriesChart_div" style="width: 100%; height: 400px; opacity: 0.5;"></div></div>
+        <div><h4>توزيع التكاليف حسب البند</h4><div id="costBreakdownChart_div" style="width: 100%; height: 400px; opacity: 0.5;"></div></div>
+      </div>
+    </div>
+
+    <div id="approvalsSection" class="card">
+      <h3>مراجعة واعتماد المعاملات المعلقة</h3>
+      <div id="pendingFilters" style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px;">
+        <label for="pendingPeriodFilter" style="margin: 0;">عرض المعاملات المعلقة لـ:</label>
+        <select id="pendingPeriodFilter" style="width: 150px;"><option value="today" selected>اليوم</option><option value="this_week">هذا الأسبوع</option><option value="this_month">هذا الشهر</option><option value="custom">فترة مخصصة</option></select>
+        <div id="pendingCustomDateRange" class="hidden" style="display: flex; gap: 10px; align-items: center;">
+          <label for="pendingStartDate" style="margin: 0;">من:</label><input type="date" id="pendingStartDate" style="width: 150px;">
+          <label for="pendingEndDate" style="margin: 0;">إلى:</label><input type="date" id="pendingEndDate" style="width: 150px;">
+          <button id="applyPendingFilterBtn">بحث</button>
+        </div>
+      </div>
+      <div id="approvalsContent" class="grid grid-cols-2">
+        <div><h4>الدخل المعلق (للمراجعة فقط)</h4><div id="pendingIncomeContainer"></div></div>
+        <div><h4>التكاليف المعلقة (للاعتماد)</h4><div id="pendingCostContainer"></div></div>
+      </div>
+    </div>
+
+    <div id="dataEntrySection" class="grid grid-cols-2">
+      <div class="card">
+        <h3>إضافة دخل (يدوي)</h3>
+        <form id="incomeForm">
+          <div class="grid grid-cols-2"><div class="form-group"><label for="income_branch">الفرع</label><select id="income_branch" required></select></div><div class="form-group"><label for="income_date">التاريخ</label><input id="income_date" type="date" required/></div></div>
+          <div class="grid grid-cols-2"><div class="form-group"><label for="income_service">الخدمة</label><select id="income_service" required></select></div><div class="form-group"><label for="income_amount">القيمة</label><input id="income_amount" type="number" step="0.01" required min="0"/></div></div>
+          <div class="grid grid-cols-2"><div class="form-group"><label for="income_paymethod">طريقة الدفع</label><select id="income_paymethod" required></select></div><div class="form-group"><label for="income_docno">ما تم تحويله الى د.أحمد</label><input id="income_docno" type="number" min="0" required/></div></div>
+          <div class="form-group"><label for="income_details">تفاصيل الخدمة</label><textarea id="income_details" rows="2"></textarea></div>
+          <div class="form-group"><label for="income_notes">ملاحظات</label><textarea id="income_notes" rows="2"></textarea></div>
+          <button type="submit" class="btn-submit">حفظ الدخل</button>
+        </form>
+      </div>
+      <div class="card">
+        <h3>إضافة تكلفة</h3>
+        <form id="costForm">
+          <div class="grid grid-cols-2"><div class="form-group"><label for="cost_branch">الفرع</label><select id="cost_branch" required></select></div><div class="form-group"><label for="cost_date">التاريخ</label><input id="cost_date" type="date" required/></div></div>
+          <div class="grid grid-cols-2"><div class="form-group"><label for="cost_name">بند التكلفة</label><select id="cost_name" required></select></div><div class="form-group"><label for="cost_amount">القيمة</label><input id="cost_amount" type="number" step="0.01" required min="0"/></div></div>
+          <div class="grid grid-cols-2"><div class="form-group"><label for="cost_paymethod">طريقة الدفع</label><select id="cost_paymethod" required></select></div><div class="form-group"><label for="cost_file">مرفق (إيصال)</label><input id="cost_file" type="file" accept="image/*,application/pdf" required/></div></div>
+          <div class="form-group"><label for="cost_details">تفاصيل</label><textarea id="cost_details" rows="2"></textarea></div>
+          <div class="form-group"><label for="cost_notes">ملاحظات</label><textarea id="cost_notes" rows="2"></textarea></div>
+          <button type="submit" class="btn-submit">حفظ التكلفة</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let TOKEN, USER, MASTER_DATA, CONTRACT_APP_URL;
+
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toastContainer');
+      toast.className = 'toast show ' + (isError ? 'error' : 'success');
+      toast.textContent = message;
+      setTimeout(() => { toast.className = 'toast hidden'; }, 4000);
+    }
+
+    function toggleSpinner(button, show, originalText) {
+        button.disabled = show;
+        button.innerHTML = show ? `<span class="spinner"></span> ${originalText}` : originalText;
+    }
+
+    google.charts.load('current', {'packages':['corechart', 'line']});
+    google.charts.setOnLoadCallback(initializeApp);
+
+    function initializeApp() {
+      TOKEN = sessionStorage.getItem('finance_token');
+      if (!TOKEN) { window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>"; return; }
+      
+      google.script.run
+        .withSuccessHandler(({ user, masterData, contractAppUrl }) => {
+          USER = user;
+          MASTER_DATA = masterData;
+          CONTRACT_APP_URL = contractAppUrl;
+          
+          document.getElementById('welcomeMessage').textContent = `أهلاً بك، ${USER.name} (${USER.role})`;
+          populateDropdowns();
+          loadAllData();
+        })
+        .withFailureHandler(err => { alert(err.message); window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>"; })
+        .getInitialData(TOKEN);
+      
+      setupEventListeners();
+    }
+
+    function loadAllData() {
+        updateKpiDashboard();
+        loadDetailedReports();
+        updateCharts();
+        updatePendingEntriesView();
+    }
+
+    function setupEventListeners() {
+        document.getElementById('logoutButton').addEventListener('click', () => {
+            sessionStorage.removeItem('finance_token');
+            window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>";
+        });
+
+        document.getElementById('registerContractBtn').addEventListener('click', (e) => {
+            const button = e.target;
+            const originalText = button.textContent;
+            toggleSpinner(button, true, 'جار التوجيه...');
+            if (!CONTRACT_APP_URL) { showToast('رابط تسجيل العقود غير معرف.', true); toggleSpinner(button, false, originalText); return; }
+            google.script.run
+                .withSuccessHandler(result => {
+                    const urlWithToken = `${CONTRACT_APP_URL}?handshake_token=${result.handshakeToken}`;
+                    window.open(urlWithToken, '_blank');
+                    toggleSpinner(button, false, originalText);
+                })
+                .withFailureHandler(err => { showToast(`فشل إنشاء جلسة آمنة: ${err.message}`, true); toggleSpinner(button, false, originalText); })
+                .generateHandshakeToken(TOKEN);
+        });
+
+        const modal = document.getElementById('changePasswordModal');
+        document.getElementById('showChangePasswordModalBtn').addEventListener('click', () => modal.classList.remove('hidden'));
+        document.getElementById('closeModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+        document.getElementById('changePasswordForm').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const oldPassword = document.getElementById('old_password').value;
+          const newPassword = document.getElementById('new_password').value;
+          if (newPassword !== document.getElementById('confirm_new_password').value) { showToast('كلمة المرور الجديدة وتأكيدها غير متطابقين.', true); return; }
+          const button = e.target.querySelector('button[type="submit"]');
+          const originalText = button.textContent;
+          toggleSpinner(button, true, 'جاري الحفظ...');
+          google.script.run
+            .withSuccessHandler(res => { showToast(res.message); modal.classList.add('hidden'); e.target.reset(); toggleSpinner(button, false, originalText); })
+            .withFailureHandler(err => { showToast(err.message, true); toggleSpinner(button, false, originalText); })
+            .changePassword(TOKEN, oldPassword, newPassword);
+        });
+
+        document.getElementById('incomeForm').addEventListener('submit', handleIncomeSubmit);
+        document.getElementById('costForm').addEventListener('submit', handleCostSubmit);
+        document.getElementById('reportItemFilter').addEventListener('change', loadDetailedReports);
+        
+        const kpiPeriodFilter = document.getElementById('kpiPeriodFilter');
+        kpiPeriodFilter.addEventListener('change', () => document.getElementById('kpiCustomDateRange').classList.toggle('hidden', kpiPeriodFilter.value !== 'custom'));
+        document.getElementById('applyKpiFilterBtn').addEventListener('click', () => { updateKpiDashboard(); loadDetailedReports(); updateCharts(); });
+
+        const pendingPeriodFilter = document.getElementById('pendingPeriodFilter');
+        pendingPeriodFilter.addEventListener('change', () => {
+            const customRange = document.getElementById('pendingCustomDateRange');
+            if (pendingPeriodFilter.value === 'custom') { customRange.classList.remove('hidden'); } 
+            else { customRange.classList.add('hidden'); updatePendingEntriesView(); }
+        });
+        document.getElementById('applyPendingFilterBtn').addEventListener('click', updatePendingEntriesView);
+    }
+
+    function populateDropdowns() {
+      const { branches, services, costCats, payMethods, allItems } = MASTER_DATA;
+      const populate = (id, options) => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        select.innerHTML = '<option value="" disabled selected>-- اختر --</option>' + options.map(o => `<option value="${o}">${o}</option>`).join('');
+      };
+      populate('income_branch', branches);
+      populate('cost_branch', branches);
+      populate('income_service', services);
+      populate('cost_name', costCats);
+      populate('income_paymethod', payMethods);
+      populate('cost_paymethod', payMethods);
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('income_date').value = today;
+      document.getElementById('cost_date').value = today;
+      
+      const itemFilterSelect = document.getElementById('reportItemFilter');
+      itemFilterSelect.innerHTML = '<option value="all" selected>-- كل البنود --</option>' + allItems.map(o => `<option value="${o}">${o}</option>`).join('');
+    }
+
+    function handleIncomeSubmit(e) {
+        e.preventDefault();
+        const button = e.target.querySelector('button');
+        const originalText = button.textContent;
+        toggleSpinner(button, true, 'جاري الحفظ...');
+        const record = {
+            Branch: document.getElementById('income_branch').value, Date: document.getElementById('income_date').value,
+            Service_Name: document.getElementById('income_service').value, Amount: document.getElementById('income_amount').value,
+            Payment_Method: document.getElementById('income_paymethod').value, Doctor_Transfer_No: document.getElementById('income_docno').value,
+            Service_Details: document.getElementById('income_details').value, Notes: document.getElementById('income_notes').value,
+        };
+        google.script.run
+            .withSuccessHandler(res => { showToast(res.message); e.target.reset(); document.getElementById('income_date').value = new Date().toISOString().split('T')[0]; toggleSpinner(button, false, originalText); })
+            .withFailureHandler(err => { showToast(err.message, true); toggleSpinner(button, false, originalText); })
+            .addIncome(TOKEN, record);
+    }
+
+    function handleCostSubmit(e) {
+        e.preventDefault();
+        const button = e.target.querySelector('button');
+        const originalText = button.textContent;
+        toggleSpinner(button, true, 'جاري الحفظ...');
+        const file = document.getElementById('cost_file').files[0];
+        const record = {
+            Branch: document.getElementById('cost_branch').value, Date: document.getElementById('cost_date').value,
+            Cost_Name: document.getElementById('cost_name').value, Amount: document.getElementById('cost_amount').value,
+            Payment_Method: document.getElementById('cost_paymethod').value, Cost_Details: document.getElementById('cost_details').value,
+            Notes: document.getElementById('cost_notes').value,
+        };
+        const submitCost = (attachmentUrl = '') => {
+            record.Attachment_URL = attachmentUrl;
+            google.script.run
+                .withSuccessHandler(res => { showToast(res.message); e.target.reset(); document.getElementById('cost_date').value = new Date().toISOString().split('T')[0]; toggleSpinner(button, false, originalText); })
+                .withFailureHandler(err => { showToast(err.message, true); toggleSpinner(button, false, originalText); })
+                .addCost(TOKEN, record);
+        };
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const base64Data = reader.result.split(',')[1];
+                const fileName = `${record.Cost_Name}__${record.Date}__${record.Amount}__${record.Branch}${file.name.slice(file.name.lastIndexOf('.'))}`;
+                google.script.run
+                    .withSuccessHandler(uploadRes => submitCost(uploadRes.url))
+                    .withFailureHandler(err => { showToast(`فشل رفع المرفق: ${err.message}`, true); toggleSpinner(button, false, originalText); })
+                    .uploadCostAttachment(TOKEN, record.Branch, fileName, base64Data);
+            };
+            reader.readAsDataURL(file);
+        } else {
+            submitCost();
+        }
+    }
+
+    function updateKpiDashboard() {
+        const { startDateStr, endDateStr } = getSelectedDateRange();
+        if (!startDateStr || !endDateStr) { showToast('يرجى تحديد تاريخ البدء والانتهاء للفترة المخصصة.', true); return; }
+        const kpiContainer = document.getElementById('adminDashboard');
+        kpiContainer.style.opacity = '0.5';
+        google.script.run
+            .withSuccessHandler(kpis => {
+                document.getElementById('kpi_rev').textContent = (kpis.revenue || 0).toLocaleString('en-US');
+                document.getElementById('kpi_cost').textContent = (kpis.costs || 0).toLocaleString('en-US');
+                document.getElementById('kpi_net').textContent = (kpis.net || 0).toLocaleString('en-US');
+                document.getElementById('kpi_roi_gross').textContent = kpis.grossROI || '0.00';
+                document.getElementById('kpi_roi_net').textContent = kpis.netROI || '0.00';
+                kpiContainer.style.opacity = '1';
+            })
+            .withFailureHandler(err => { showToast(err.message, true); kpiContainer.style.opacity = '1'; })
+            .getGlobalStats(TOKEN, startDateStr, endDateStr);
+    }
+    
+    function loadDetailedReports() {
+      const filterItem = document.getElementById('reportItemFilter').value;
+      const reportsTable = document.getElementById('reportsTable');
+      reportsTable.style.opacity = '0.5';
+      const { startDateStr, endDateStr } = getSelectedDateRange();
+      if (!startDateStr || !endDateStr) { reportsTable.style.opacity = '1'; return; }
+      google.script.run
+          .withSuccessHandler(reports => { renderReports(reports); reportsTable.style.opacity = '1'; })
+          .withFailureHandler(err => { showToast(err.message, true); reportsTable.style.opacity = '1'; })
+          .getDetailedReports(TOKEN, filterItem, startDateStr, endDateStr);
+    }
+
+    function renderReports(reports) {
+        const tbody = document.getElementById('reportsTable').querySelector('tbody');
+        const tfoot = document.getElementById('reportsTable').querySelector('tfoot');
+        tbody.innerHTML = ''; tfoot.innerHTML = '';
+        let totalIncome = 0, totalCost = 0;
+        for (const branch in reports) {
+            const income = reports[branch].income, cost = reports[branch].cost, net = income - cost;
+            totalIncome += income; totalCost += cost;
+            tbody.innerHTML += `<tr><td>${branch}</td><td>${income.toLocaleString('en-US')}</td><td>${cost.toLocaleString('en-US')}</td><td>${net.toLocaleString('en-US')}</td></tr>`;
+        }
+        const totalNet = totalIncome - totalCost;
+        tfoot.innerHTML = `<tr style="font-weight: bold; background-color: var(--bg-main);"><td>الإجمالي</td><td>${totalIncome.toLocaleString('en-US')}</td><td>${totalCost.toLocaleString('en-US')}</td><td>${totalNet.toLocaleString('en-US')}</td></tr>`;
+    }
+
+    function updateCharts() {
+        const { startDateStr, endDateStr } = getSelectedDateRange();
+        if (!startDateStr || !endDateStr) return;
+        document.getElementById('timeSeriesChart_div').style.opacity = '0.5';
+        document.getElementById('costBreakdownChart_div').style.opacity = '0.5';
+        google.script.run
+            .withSuccessHandler(chartData => {
+                drawTimeSeriesChart(chartData.timeSeries);
+                drawCostBreakdownChart(chartData.costBreakdown);
+                document.getElementById('timeSeriesChart_div').style.opacity = '1';
+                document.getElementById('costBreakdownChart_div').style.opacity = '1';
+            })
+            .withFailureHandler(err => { showToast(`فشل تحميل بيانات الرسوم البيانية: ${err.message}`, true); document.getElementById('timeSeriesChart_div').style.opacity = '1'; document.getElementById('costBreakdownChart_div').style.opacity = '1'; })
+            .getChartData(TOKEN, startDateStr, endDateStr);
+    }
+
+    function drawTimeSeriesChart(dataArray) {
+        const chartDiv = document.getElementById('timeSeriesChart_div');
+        if (!dataArray || dataArray.length <= 1) { chartDiv.innerHTML = '<p style="text-align:center; padding-top: 50px;">لا توجد بيانات كافية لعرض الرسم البياني.</p>'; return; }
+        const data = google.visualization.arrayToDataTable(dataArray);
+        const options = { hAxis: { title: 'التاريخ', slantedText: true, slantedTextAngle: 45 }, vAxis: { title: 'المبلغ', format: 'short' }, legend: { position: 'top' }, series: { 0: { color: '#22c55e' }, 1: { color: '#ef4444' } }, chartArea: { left: 60, top: 20, width: '85%', height: '70%' } };
+        const chart = new google.visualization.LineChart(chartDiv);
+        chart.draw(data, options);
+    }
+
+    function drawCostBreakdownChart(dataArray) {
+        const chartDiv = document.getElementById('costBreakdownChart_div');
+        if (!dataArray || dataArray.length <= 1) { chartDiv.innerHTML = '<p style="text-align:center; padding-top: 50px;">لا توجد بيانات تكاليف في هذه الفترة.</p>'; return; }
+        const data = google.visualization.arrayToDataTable(dataArray);
+        const options = { title: 'توزيع التكاليف حسب البند', is3D: true, pieSliceText: 'percentage', legend: { position: 'right', textStyle: { fontSize: 12 } }, chartArea: { left: 0, top: 20, width: '90%', height: '80%' } };
+        const chart = new google.visualization.PieChart(chartDiv);
+        chart.draw(data, options);
+    }
+
+    function updatePendingEntriesView() {
+        const filterType = document.getElementById('pendingPeriodFilter').value;
+        let startDate, endDate;
+        const today = new Date();
+        switch (filterType) {
+            case 'this_week': const firstDayOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1))); startDate = firstDayOfWeek; endDate = new Date(firstDayOfWeek); endDate.setDate(endDate.getDate() + 6); break;
+            case 'this_month': startDate = new Date(today.getFullYear(), today.getMonth(), 1); endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0); break;
+            case 'custom': startDate = document.getElementById('pendingStartDate').value; endDate = document.getElementById('pendingEndDate').value; if (!startDate || !endDate) { showToast('يرجى تحديد تاريخ البدء والانتهاء.', true); return; } break;
+            case 'today': default: startDate = new Date(); endDate = new Date(); break;
+        }
+        const startDateStr = (typeof startDate === 'string') ? startDate : startDate.toISOString().split('T')[0];
+        const endDateStr = (typeof endDate === 'string') ? endDate : endDate.toISOString().split('T')[0];
+        const container = document.getElementById('approvalsContent');
+        container.style.opacity = '0.5';
+        google.script.run
+            .withSuccessHandler(pendingData => { renderPendingEntries(pendingData); container.style.opacity = '1'; })
+            .withFailureHandler(err => { showToast(err.message, true); container.style.opacity = '1'; })
+            .getPendingEntries(TOKEN, startDateStr, endDateStr);
+    }
+
+    function renderPendingEntries(pending) {
+        const incomeContainer = document.getElementById('pendingIncomeContainer');
+        const costContainer = document.getElementById('pendingCostContainer');
+        incomeContainer.innerHTML = 'لا يوجد دخل معلق في هذه الفترة.';
+        costContainer.innerHTML = 'لا توجد تكاليف معلقة في هذه الفترة.';
+        const groupAndRender = (data, container, type) => {
+            if (!data || data.length === 0) return;
+            container.innerHTML = '';
+            const groupedByBranch = data.reduce((acc, item) => { (acc[item.branch] = acc[item.branch] || []).push(item); return acc; }, {});
+            for (const branch in groupedByBranch) {
+                const details = document.createElement('details'); details.open = true;
+                const summary = document.createElement('summary'); summary.style.fontWeight = 'bold'; summary.style.cursor = 'pointer'; summary.textContent = `${branch} (${groupedByBranch[branch].length} معاملات)`;
+                const table = document.createElement('table');
+                table.innerHTML = type === 'income' ? '<thead><tr><th>التاريخ</th><th>المبلغ</th><th>الموظف</th><th>الخدمة</th></tr></thead>' : '<thead><tr><th>التاريخ</th><th>المبلغ</th><th>الموظف</th><th>بند التكلفة</th><th>اعتماد</th></tr></thead>';
+                const tbody = document.createElement('tbody');
+                groupedByBranch[branch].forEach(item => {
+                    const row = document.createElement('tr'); row.id = `row-${item.id}`;
+                    if (type === 'income') {
+                        row.innerHTML = `<td>${item.date}</td><td>${item.amount.toLocaleString('en-US')}</td><td>${item.employee}</td><td>${item.service}</td>`;
+                    } else {
+                        row.innerHTML = `<td>${item.date}</td><td>${item.amount.toLocaleString('en-US')}</td><td>${item.employee}</td><td>${item.item}</td><td><button class="btn-approve" onclick="handleApprovalClick('${item.id}', 'cost', this)">اعتماد</button></td>`; 
+                    }
+                    tbody.appendChild(row);
+                });
+                table.appendChild(tbody); details.appendChild(summary); details.appendChild(table); container.appendChild(details);
+            }
+        };
+        groupAndRender(pending.income, incomeContainer, 'income');
+        groupAndRender(pending.cost, costContainer, 'cost');
+    }
+
+    function handleApprovalClick(entryId, entryType, button) {
+        button.disabled = true; button.innerHTML = '<span class="spinner"></span>';
+        google.script.run
+            .withSuccessHandler(res => { showToast(res.message); document.getElementById(`row-${entryId}`).remove(); })
+            .withFailureHandler(err => { showToast(err.message, true); button.disabled = false; button.textContent = 'اعتماد'; })
+            .approveEntry(TOKEN, entryId, entryType);
+    }
+
+    function getSelectedDateRange() {
+        const filterType = document.getElementById('kpiPeriodFilter').value;
+        let startDate, endDate;
+        const today = new Date();
+        switch (filterType) {
+            case 'current_year': startDate = new Date(today.getFullYear(), 0, 1); endDate = new Date(today.getFullYear(), 11, 31); break;
+            case 'last_year': startDate = new Date(today.getFullYear() - 1, 0, 1); endDate = new Date(today.getFullYear() - 1, 11, 31); break;
+            case 'custom': startDate = document.getElementById('kpiStartDate').value; endDate = document.getElementById('kpiEndDate').value; if (!startDate || !endDate) { return {}; } break;
+            case 'current_month': default: startDate = new Date(today.getFullYear(), today.getMonth(), 1); endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0); break;
+        }
+        const startDateStr = (typeof startDate === 'string') ? startDate : startDate.toISOString().split('T')[0];
+        const endDateStr = (typeof endDate === 'string') ? endDate : endDate.toISOString().split('T')[0];
+        return { startDateStr, endDateStr };
+    }
+  </script>
+</body>
+</html>

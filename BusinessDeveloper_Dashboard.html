@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Locus - Sales Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg-main: #f8fafc; --bg-card: #ffffff; --border-color: #e2e8f0; --text-primary: #1e293b; --text-secondary: #64748b; --accent-blue: #38bdf8; --danger-color: #f43f5e; }
+    body { font-family: 'Cairo', sans-serif; margin: 0; background-color: var(--bg-main); color: var(--text-primary); }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+    .page-title { font-size: 2rem; font-weight: 700; margin: 0; }
+    .user-info { color: var(--text-secondary); font-size: 0.9rem; margin-top: 5px; }
+    button { padding: 10px 15px; border-radius: 8px; border: none; background-color: var(--accent-blue); color: #ffffff; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="page-header">
+      <div>
+        <h1 class="page-title">لوحة تحكم المبيعات</h1>
+        <p id="welcomeMessage" class="user-info"></p>
+      </div>
+      <button id="logoutButton" style="background-color: var(--danger-color);">خروج</button>
+    </header>
+
+    <div class="card">
+      <h2>مرحباً بك في واجهة المبيعات</h2>
+      <p>هذه هي واجهتك المخصصة. يمكنك هنا إضافة الأدوات والتقارير الخاصة بفريق المبيعات.</p>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const TOKEN = sessionStorage.getItem('finance_token');
+      if (!TOKEN) { window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>"; return; }
+
+      google.script.run
+        .withSuccessHandler(({ user }) => {
+          document.getElementById('welcomeMessage').textContent = `أهلاً بك، ${user.name} (${user.role})`;
+        })
+        .withFailureHandler(err => { alert(err.message); window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>"; })
+        .getInitialData(TOKEN);
+
+      document.getElementById('logoutButton').addEventListener('click', () => {
+        sessionStorage.removeItem('finance_token');
+        window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>";
+      });
+    });
+  </script>
+</body>
+</html>

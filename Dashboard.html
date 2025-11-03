@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Locus - Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg-main: #f8fafc; --bg-card: #ffffff; --border-color: #e2e8f0; --text-primary: #1e293b; --text-secondary: #64748b; --accent-blue: #38bdf8; --danger-color: #f43f5e; --success-color: #22c55e; }
+    body { font-family: 'Cairo', sans-serif; margin: 0; background-color: var(--bg-main); color: var(--text-primary); }
+    .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+    .card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+    .page-title { font-size: 2rem; font-weight: 700; margin: 0; }
+    .user-info { color: var(--text-secondary); font-size: 0.9rem; margin-top: 5px; }
+    button { padding: 10px 15px; border-radius: 8px; border: none; background-color: var(--accent-blue); color: #ffffff; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: background-color 0.2s; }
+    button:disabled { background-color: #94a3b8; cursor: not-allowed; }
+    .hidden { display: none !important; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { text-align: right; padding: 12px; border-bottom: 1px solid var(--border-color); }
+    th { background-color: var(--bg-main); }
+    .spinner { border: 3px solid rgba(255, 255, 255, 0.5); border-radius: 50%; border-top: 3px solid #ffffff; width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; margin-right: 8px; vertical-align: middle; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .toast { position: fixed; top: 20px; right: 20px; background-color: var(--bg-card); color: var(--text-primary); padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 3000; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease-out; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.error { border-left: 4px solid #ef4444; }
+    .toast.success { border-left: 4px solid #22c55e; }
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+    .form-group { margin-bottom: 20px; }
+    .btn-submit { width: 100%; padding: 12px; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <div id="toastContainer" class="toast hidden"></div>
+  <div class="container">
+    <header class="page-header">
+      <div>
+        <h1 class="page-title">لوحة التحكم</h1>
+        <p id="welcomeMessage" class="user-info"></p>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button id="showChangePasswordModalBtn">تغيير كلمة المرور</button>
+        <button id="logoutButton" style="background-color: var(--danger-color);">خروج</button>
+      </div>
+    </header>
+
+    <div id="changePasswordModal" class="modal-overlay hidden">
+      <div class="card" style="width: 400px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h4>تغيير كلمة المرور</h4>
+          <button id="closeModalBtn" style="background: none; color: var(--danger-color); font-size: 1.5rem; padding: 0; line-height: 1;">&times;</button>
+        </div>
+        <form id="changePasswordForm" style="margin-top: 20px;">
+          <div class="form-group"><label for="old_password">كلمة المرور الحالية</label><input id="old_password" type="password" required></div>
+          <div class="form-group"><label for="new_password">كلمة المرور الجديدة</label><input id="new_password" type="password" required></div>
+          <div class="form-group"><label for="confirm_new_password">تأكيد كلمة المرور الجديدة</label><input id="confirm_new_password" type="password" required></div>
+          <button type="submit" class="btn-submit">حفظ كلمة المرور الجديدة</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="attendanceSection" class="card">
+      <h3>تسجيل الحضور والانصراف</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+        <button id="checkInBtn" style="background-color: var(--success-color);">تسجيل حضور</button>
+        <button id="checkOutBtn" style="background-color: var(--danger-color);">تسجيل انصراف</button>
+      </div>
+    </div>
+
+    <div id="myAttendanceLogSection" class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3>سجل حضوري (هذا الشهر)</h3>
+        <button id="toggleMyLogBtn">عرض السجل</button>
+      </div>
+      <div id="myLogContainer" class="hidden" style="overflow-x: auto;">
+        <table id="myLogTable">
+          <thead><tr><th>التاريخ والوقت</th><th>نوع العملية</th><th>حالة الموقع</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let TOKEN, USER;
+
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toastContainer');
+      toast.className = 'toast show ' + (isError ? 'error' : 'success');
+      toast.textContent = message;
+      setTimeout(() => { toast.className = 'toast hidden'; }, 4000);
+    }
+
+    function toggleSpinner(button, show, originalText) {
+        button.disabled = show;
+        button.innerHTML = show ? `<span class="spinner"></span> ${originalText}` : originalText;
+    }
+
+    function initializeApp() {
+      TOKEN = sessionStorage.getItem('finance_token');
+      if (!TOKEN) { window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>"; return; }
+      
+      google.script.run
+        .withSuccessHandler(({ user }) => {
+          USER = user;
+          document.getElementById('welcomeMessage').textContent = `أهلاً بك، ${USER.name} (${USER.role})`;
+        })
+        .withFailureHandler(err => { alert(err.message); window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>"; })
+        .getInitialData(TOKEN);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeApp();
+
+        document.getElementById('logoutButton').addEventListener('click', () => {
+            sessionStorage.removeItem('finance_token');
+            window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>";
+        });
+
+        const modal = document.getElementById('changePasswordModal');
+        document.getElementById('showChangePasswordModalBtn').addEventListener('click', () => modal.classList.remove('hidden'));
+        document.getElementById('closeModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+        document.getElementById('changePasswordForm').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const oldPassword = document.getElementById('old_password').value;
+          const newPassword = document.getElementById('new_password').value;
+          if (newPassword !== document.getElementById('confirm_new_password').value) { showToast('كلمة المرور الجديدة وتأكيدها غير متطابقين.', true); return; }
+          const button = e.target.querySelector('button[type="submit"]');
+          const originalText = button.textContent;
+          toggleSpinner(button, true, 'جاري الحفظ...');
+          google.script.run
+            .withSuccessHandler(res => { showToast(res.message); modal.classList.add('hidden'); e.target.reset(); toggleSpinner(button, false, originalText); })
+            .withFailureHandler(err => { showToast(err.message, true); toggleSpinner(button, false, originalText); })
+            .changePassword(TOKEN, oldPassword, newPassword);
+        });
+
+        document.getElementById('checkInBtn').addEventListener('click', () => handleAttendance('Check-in'));
+        document.getElementById('checkOutBtn').addEventListener('click', () => handleAttendance('Check-out'));
+        document.getElementById('toggleMyLogBtn').addEventListener('click', toggleMyAttendanceLog);
+    });
+
+    function handleAttendance(type) {
+      const btn = type === 'Check-in' ? document.getElementById('checkInBtn') : document.getElementById('checkOutBtn');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner"></span> جار التسجيل...`;
+
+      const processAttendance = (lat, lon, status) => {
+        google.script.run
+          .withSuccessHandler(res => { showToast(res.message, !res.locationStatus.includes('Verified')); btn.disabled = false; btn.innerHTML = originalText; })
+          .withFailureHandler(err => { showToast(err.message, true); btn.disabled = false; btn.innerHTML = originalText; })
+          .logAttendance(TOKEN, type, '', lat, lon, status);
+      };
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => processAttendance(position.coords.latitude, position.coords.longitude, 'Granted'),
+          (error) => {
+            let status = 'Error';
+            if (error.code === error.PERMISSION_DENIED) status = 'Denied';
+            showToast('فشل الحصول على الموقع. سيتم التسجيل بدون التحقق من الموقع.', true);
+            processAttendance(null, null, status);
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      } else {
+        showToast('متصفحك لا يدعم تحديد الموقع.', true);
+        processAttendance(null, null, 'Not Supported');
+      }
+    }
+
+    function toggleMyAttendanceLog() {
+      const container = document.getElementById('myLogContainer');
+      const btn = document.getElementById('toggleMyLogBtn');
+      if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        btn.innerHTML = `<span class="spinner"></span> جار التحميل...`;
+        const today = new Date();
+        const startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+        const endDate = today.toISOString().split('T')[0];
+        google.script.run
+          .withSuccessHandler(logs => { renderMyLogTable(logs); btn.textContent = 'إخفاء السجل'; })
+          .withFailureHandler(err => { showToast(err.message, true); btn.textContent = 'عرض السجل'; })
+          .getMyAttendanceLog(TOKEN, startDate, endDate);
+      } else {
+        container.classList.add('hidden');
+        btn.textContent = 'عرض السجل';
+      }
+    }
+
+    function renderMyLogTable(logs) {
+      const tbody = document.getElementById('myLogTable').querySelector('tbody');
+      tbody.innerHTML = '';
+      if (logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">لا يوجد سجلات حضور في هذا الشهر.</td></tr>';
+        return;
+      }
+      logs.forEach(log => {
+        tbody.innerHTML += `<tr><td>${log.FormattedDateTime}</td><td>${log.Type === 'Check-in' ? 'حضور' : 'انصراف'}</td><td>${log.Location_Status}</td></tr>`;
+      });
+    }
+  </script>
+</body>
+</html>
